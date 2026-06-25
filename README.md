@@ -10,7 +10,8 @@ The pipeline was executed on a high-performance computing (HPC) cluster using SL
 Raw paired-end FASTQ files --> Trim Galore (adapter trimming + quality control) --> Bismark (genome preparation + alignment) --> Deduplication & BAM filtering --> Methylation extraction (CpG / CHG / CHH) --> BedGraph generation --> BigWig conversion for visualization --> Genome-wide methylation profiling (ViewBS) --> Gene-level methylation analysis (bedtools + R)
 
 
-Key Steps
+
+Key Steps:
 1. Quality Control and Adapter Trimming
 Trim Galore was used to remove adapter sequences and low-quality bases. Additional base clipping was applied to reduce bisulfite sequencing bias.
 

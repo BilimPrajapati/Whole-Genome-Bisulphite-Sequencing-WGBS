@@ -5,8 +5,9 @@ This repository contains a complete Whole Genome Bisulfite Sequencing (WGBS) dat
 
 The pipeline was executed on a high-performance computing (HPC) cluster using SLURM job scheduling.
 
-  Workflow Summary
-Raw paired-end FASTQ files -> Trim Galore (adapter trimming + quality control) --> Bismark (genome preparation + alignment) --> Deduplication & BAM filtering --> Methylation extraction (CpG / CHG / CHH) --> BedGraph generation --> BigWig conversion for visualization --> Genome-wide methylation profiling (ViewBS) --> Gene-level methylation analysis (bedtools + R)
+  Workflow Summary: 
+  
+Raw paired-end FASTQ files --> Trim Galore (adapter trimming + quality control) --> Bismark (genome preparation + alignment) --> Deduplication & BAM filtering --> Methylation extraction (CpG / CHG / CHH) --> BedGraph generation --> BigWig conversion for visualization --> Genome-wide methylation profiling (ViewBS) --> Gene-level methylation analysis (bedtools + R)
 
 
 Key Steps

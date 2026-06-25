@@ -1,0 +1,111 @@
+#!/bin/bash
+#SBATCH --job-name=wgbs_pipeline
+#SBATCH --partition=cpu
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=60G
+#SBATCH --time=48:00:00
+#SBATCH --output=wgbs.out
+#SBATCH --error=wgbs.err
+
+# Load modules
+module load TrimGalore
+module load bismark
+module load samtools
+module load MethylDackel
+module load R
+module load bedGraphToBigWig
+module load tabix
+module load ViewBS
+module load bedtools
+
+# I) Quality Control and Adapter Trimming : Trimmed paired-end WGBS reads and performed quality control.
+
+trim_galore \
+--illumina \
+--paired \
+--clip_R1 10 \
+--clip_R2 10 \
+--fastqc \
+sample_R1.fastq.gz \
+sample_R2.fastq.gz
+
+# II) Genome Preparation
+# Prepare reference genome for bisulfite alignment.
+
+bismark_genome_preparation /path/to/genome_folder/
+
+
+# III) Alignment and BAM Processing : Align reads and process BAM files to retain high-quality uniquely mapped reads.
+
+bismark \
+-p 50 \
+--parallel 8 \
+/path/to/genome_folder/ \
+-1 sample_R1.fastq.gz \
+-2 sample_R2.fastq.gz
+
+samtools merge -o sample.merged.bam *.bam
+samtools sort -n -o sample.sorted.bam sample.merged.bam
+
+deduplicate_bismark -p sample.sorted.bam -o sample
+
+samtools view -b sample.deduplicated.bam -q 30 -o sample.unique.bam
+samtools index sample.unique.bam
+
+
+# IV) Methylation Extraction : Extract methylation calls in CpG, CHG, and CHH contexts.
+
+bismark_methylation_extractor \
+--gzip \
+--parallel 15 \
+--comprehensive \
+--CX \
+--bedGraph \
+--genome_folder /path/to/genome_folder/ \
+sample.unique.bam
+
+# V) Coverage File Processing: Convert methylation outputs for downstream visualization.
+
+coverage2cytosine -CX -o sample /path/to/genome_folder/ sample.unique.bismark.cov.gz
+
+# VI) BigWig Generation
+# Convert methylation BedGraph files into BigWig format for genome browser visualization.
+
+bedGraphToBigWig sample_CpG_filtered.bedGraph chrom.sizes sample_CpG.bw
+
+# VII) Genome-wide Methylation Analysis
+# Analyze global methylation patterns using ViewBS.
+
+ViewBS MethGeno \
+--genomeLength /path/to/genome.fai \
+--sample sample.CX_report.txt.gz,sample \
+--prefix sample_MethGeno \
+--contxt CG
+
+
+# VIII) Gene-level Methylation Analysis : Intersect methylation data with gene annotations.
+
+bedtools intersect \
+-a /path/to/annotation.bed \
+-b sample_meth_CpG.bed \
+-wa -wb
+
+
+# IX) Methylation Quantification in R : Compute gene-level methylation percentages.
+
+library(dplyr)
+library(openxlsx)
+
+data <- read.table("sample_HC_CpG.bed", header = FALSE)
+
+colnames(data) <- c("chrom", "start", "end", "annotation", "meth", "unmeth")
+
+data$MethPercentage <- (data$meth / (data$meth + data$unmeth)) * 100
+
+gene_methylation <- data %>%
+  group_by(annotation) %>%
+  summarise(AvgMeth = mean(MethPercentage, na.rm = TRUE))
+
+write.xlsx(gene_methylation, "gene_methylation.xlsx")
